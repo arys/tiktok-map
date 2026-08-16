@@ -476,6 +476,12 @@
     }
   }
 
+  // shareable links: /?q=breakfast%20in%20budapest auto-runs the search
+  const urlQ = new URLSearchParams(location.search).get("q");
+  if (urlQ) { input.value = urlQ; search(urlQ); }
+  const origSearch = search;
+  search = (q) => { history.replaceState(null, "", "?q=" + encodeURIComponent(q)); return origSearch(q); };
+
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const q = input.value.trim();
