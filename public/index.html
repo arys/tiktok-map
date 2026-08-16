@@ -290,6 +290,7 @@
     .panel.peek { max-height: 168px; }
     .grab {
       display: block;
+      position: relative;
       width: 44px; height: 5px;
       border-radius: 3px;
       background: rgba(255,255,255,.28);
@@ -297,6 +298,8 @@
       cursor: pointer;
       flex: none;
     }
+    .grab::after { content: ""; position: absolute; inset: -14px -60px; } /* bigger tap target */
+    .panel.peek { cursor: pointer; }
     .panel-head { padding-top: 8px; }
     .chips { display: none; }
     .credit { top: 10px; left: 12px; right: auto; bottom: auto; }
@@ -396,9 +399,17 @@
   });
   new LocateControl({ position: CTL_POS }).addTo(map);
 
-  // mobile bottom sheet: grab handle toggles peek/expanded
+  // mobile bottom sheet: grab handle toggles peek/expanded,
+  // and tapping anywhere on the collapsed sheet expands it back
   const panel = document.getElementById("panel");
-  document.getElementById("grab").addEventListener("click", () => panel.classList.toggle("peek"));
+  document.getElementById("grab").addEventListener("click", (e) => {
+    e.stopPropagation();
+    panel.classList.toggle("peek");
+  });
+  panel.addEventListener("click", (e) => {
+    // .card excluded: a card tap adds .peek and the same click bubbles here
+    if (panel.classList.contains("peek") && !e.target.closest("a, .card")) panel.classList.remove("peek");
+  });
   locateMe(false); // quiet attempt on load; the ⌖ button flies to it
 
   const $ = (s) => document.querySelector(s);
