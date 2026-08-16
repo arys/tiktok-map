@@ -71,6 +71,7 @@
   }
   .searchbox input {
     flex: 1;
+    min-width: 0;
     font: 500 15px var(--font-body);
     color: var(--ink);
     background: rgba(255,255,255,.06);
@@ -153,12 +154,22 @@
   .card.active .rank { background: var(--red); color: #fff; }
   .card h3 { font: 700 16.5px var(--font-display); letter-spacing: -0.2px; }
   .sub { font-size: 12px; color: var(--ink-dim); margin-top: 3px; line-height: 1.45; }
-  .badges { display: flex; gap: 10px; margin-top: 8px; font-size: 12px; }
+  .badges { display: flex; gap: 10px; margin-top: 8px; font-size: 12px; flex-wrap: wrap; align-items: center; }
   .badge-rating { color: var(--amber); font-weight: 600; }
   .badge-plays { color: var(--cyan); font-weight: 600; }
   .badge-videos { color: var(--ink-dim); }
+  .gmlink {
+    color: var(--amber);
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid rgba(255,201,77,.35);
+    border-radius: 999px;
+    padding: 2px 9px;
+    transition: background .15s, border-color .15s;
+  }
+  .gmlink:hover { background: rgba(255,201,77,.12); border-color: var(--amber); }
 
-  .thumbs { display: flex; gap: 6px; margin-top: 10px; }
+  .thumbs { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; }
   .thumbs a {
     display: block; flex: none;
     width: 58px; height: 76px;
@@ -264,13 +275,40 @@
     font-size: 10.5px; color: rgba(20,30,40,.55);
   }
   .credit a { color: rgba(20,30,40,.75); }
+
+  /* ---------- mobile: bottom sheet ---------- */
+  .grab { display: none; }
+  @media (max-width: 640px) {
+    .panel {
+      top: auto;
+      left: 10px; right: 10px;
+      bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      width: auto;
+      max-height: 58vh;
+      transition: max-height .35s cubic-bezier(.3,.9,.3,1);
+    }
+    .panel.peek { max-height: 168px; }
+    .grab {
+      display: block;
+      width: 44px; height: 5px;
+      border-radius: 3px;
+      background: rgba(255,255,255,.28);
+      margin: 10px auto 0;
+      cursor: pointer;
+      flex: none;
+    }
+    .panel-head { padding-top: 8px; }
+    .chips { display: none; }
+    .credit { top: 10px; left: 12px; right: auto; bottom: auto; }
+  }
 </style>
 </head>
 <body>
 
 <div id="map"></div>
 
-<aside class="panel">
+<aside class="panel" id="panel">
+  <div class="grab" id="grab" title="Collapse / expand"></div>
   <div class="panel-head">
     <div class="wordmark"><span class="tik">TIK</span><span class="map">MAP</span></div>
     <div class="tagline">places TikTok is talking about, pinned by AI</div>
@@ -307,8 +345,10 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+  const IS_MOBILE = window.matchMedia("(max-width: 640px)").matches;
+  const CTL_POS = IS_MOBILE ? "topright" : "bottomright";
   const map = L.map("map", { zoomControl: false, worldCopyJump: true }).setView([47.4979, 19.0402], 4);
-  L.control.zoom({ position: "bottomright" }).addTo(map);
+  L.control.zoom({ position: CTL_POS }).addTo(map);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
     maxZoom: 20, subdomains: "abcd", attribution: ""
   }).addTo(map);
@@ -354,7 +394,11 @@
       return btn;
     },
   });
-  new LocateControl({ position: "bottomright" }).addTo(map);
+  new LocateControl({ position: CTL_POS }).addTo(map);
+
+  // mobile bottom sheet: grab handle toggles peek/expanded
+  const panel = document.getElementById("panel");
+  document.getElementById("grab").addEventListener("click", () => panel.classList.toggle("peek"));
   locateMe(false); // quiet attempt on load; the ⌖ button flies to it
 
   const $ = (s) => document.querySelector(s);
@@ -384,7 +428,10 @@
   function activate(i, { fly = false, popup = false } = {}) {
     cards.forEach((c, j) => c.classList.toggle("active", j === i));
     markers.forEach((m, j) => m.getElement()?.firstChild?.classList.toggle("hot", j === i));
-    if (fly) map.flyTo(markers[i].getLatLng(), Math.max(map.getZoom(), 15), { duration: 0.8 });
+    if (fly) {
+      map.flyTo(markers[i].getLatLng(), Math.max(map.getZoom(), 15), { duration: 0.8 });
+      if (IS_MOBILE) panel.classList.add("peek"); // reveal the map behind the sheet
+    }
     if (popup) markers[i].openPopup();
     cards[i]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
@@ -432,6 +479,7 @@
               ${p.rating ? `<span class="badge-rating">★ ${p.rating}</span>` : ""}
               <span class="badge-plays">▶ ${fmt(p.totalPlays)} plays</span>
               <span class="badge-videos">${p.videos.length} video${p.videos.length > 1 ? "s" : ""}</span>
+              ${p.mapsUri ? `<a class="gmlink" href="${p.mapsUri}" target="_blank" rel="noopener">Maps ↗</a>` : ""}
             </div>
           </div>
         </div>
@@ -447,7 +495,12 @@
       cards.push(card);
     });
 
-    map.flyToBounds(bounds, { padding: [80, 80], maxZoom: 15, duration: 1 });
+    map.flyToBounds(bounds, {
+      padding: IS_MOBILE ? [30, 30] : [80, 80],
+      paddingBottomRight: IS_MOBILE ? [30, Math.round(innerHeight * 0.6)] : undefined,
+      maxZoom: 15, duration: 1,
+    });
+    panel.classList.remove("peek"); // show the fresh list
   }
 
   async function search(q) {
