@@ -6,6 +6,7 @@
 <title>TIKMAP — places TikTok is talking about</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📍</text></svg>" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Schibsted+Grotesk:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
 <style>
@@ -344,17 +345,20 @@
   </div>
 </aside>
 
-<div class="credit">© <a href="https://www.openstreetmap.org/copyright">OSM</a> · <a href="https://carto.com/attributions">CARTO</a> · TikAPI · Gemini · Google Places</div>
+<div class="credit">© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://openfreemap.org">OpenFreeMap</a> · TikAPI · Gemini · Google Places</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
 <script>
   const IS_MOBILE = window.matchMedia("(max-width: 640px)").matches;
   const CTL_POS = IS_MOBILE ? "topright" : "bottomright";
   const map = L.map("map", { zoomControl: false, worldCopyJump: true }).setView([47.4979, 19.0402], 4);
   L.control.zoom({ position: CTL_POS }).addTo(map);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    maxZoom: 20, subdomains: "abcd", attribution: ""
-  }).addTo(map);
+  // OpenFreeMap vector basemap (free, no API key), drawn by MapLibre GL inside Leaflet.
+  // CARTO basemaps now watermark every tile "API KEY REQUIRED" without a key.
+  L.maplibreGL({ style: "https://tiles.openfreemap.org/styles/liberty", attribution: "" }).addTo(map);
+  map.setMaxZoom(19);
 
   // ---------- "you are here" ----------
   let meMarker = null, meCircle = null;
